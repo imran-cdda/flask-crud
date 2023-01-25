@@ -1,3 +1,5 @@
+from bson import ObjectId
+
 def format_dict(input_dict, parent=None, res = {}):
     for k, v in input_dict.items():
         if isinstance(v, dict):
@@ -12,13 +14,18 @@ def format_dict(input_dict, parent=None, res = {}):
                 res[k] = v
     return res
 
-class Formatter:
-    def __init__(self, data, schema):
-        self.data = format_dict(data.to_mongo())
-        self.schema = schema
+import json
+class DataFormatter:
+    def __init__(self):
+        data = {}
+        for key in self.__dir__():
+            if isinstance(self.__getattribute__(key), str) and "__" not in key:
+                data[key] = self.__getattribute__(key)
+        self.schema = data
 
-    def format(self):
+    def format(self, data):
+        data = format_dict(data.to_mongo())
         result = {}
         for k in self.schema:
-            result[k] = self.data.get(self.schema[k])
+            result[k] = str(data.get(self.schema[k])) if isinstance(data.get(self.schema[k]), ObjectId) else data.get(self.schema[k])
         return result

@@ -1,5 +1,5 @@
 from app import app
-from .form import user, get_user, user_format
+from .form import user, user_format
 from flask import request
 from app.error import *
 
@@ -12,5 +12,5 @@ def create_user():
 @app.route("/user/get")
 def get_user_data():
     id = request.args['id']
-    result = get_user(user.objects.get(id=id))
+    result = user_format().format(user.objects.get(id=id))
     return result
