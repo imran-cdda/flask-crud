@@ -12,5 +12,5 @@ def create_user():
 @app.route("/user/get")
 def get_user_data():
     id = request.args['id']
-    result = user_format().format(user.objects.get(id=id))
+    result = user_format().format(user.objects(), many=True)
     return result

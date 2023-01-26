@@ -2,6 +2,7 @@ from app.database import db
 from mongoengine import *
 from app.error import *
 from utils.formatter import DataFormatter
+from api.user.form import user
 
 class corod(EmbeddedDocument):
     lat = db.StringField(required=True)
@@ -12,14 +13,16 @@ class address(EmbeddedDocument):
     state = db.StringField(required=True)
     coordinate = db.EmbeddedDocumentField(corod, required=True)
 
-class user(db.Document):
-    name = db.StringField(required=True)
-    address = db.EmbeddedDocumentField(address, required=True)
+class property(db.Document):
+    title = db.StringField(required=True)
+    # address = db.EmbeddedDocumentField(address, required=True)
+    address = db.StringField(required=True)
+    user = db.ReferenceField(user, required=True)
 
-class user_format(DataFormatter):
+class pro_format(DataFormatter):
     id = "_id"
-    name = "name"
-    address = {
-        "city": "address.city",
-        "state": "address.state"
+    name = "title"
+    user = {
+        "name": "user.name",
+        "city": "user.address.city"
     }

@@ -1,31 +1,62 @@
 from bson import ObjectId
 
-def format_dict(input_dict, parent=None, res = {}):
-    for k, v in input_dict.items():
-        if isinstance(v, dict):
-            if parent:
-                format_dict(v, f"{parent}.{k}", res)
-            else:
-                format_dict(v, f"{k}", res)
+def flatten_dict(input_data, prefix = "", schema=False):
+    output_data = {}
+    for key, value in input_data.items():
+        new_key = prefix + "." + key if prefix else key
+        if isinstance(value, dict):
+            output_data.update(flatten_dict(value, new_key))
+            if not schema:
+                output_data[new_key] = value
         else:
-            if parent:
-                res[f"{parent}.{k}"] = v
-            else:
-                res[k] = v
-    return res
+            output_data[new_key] = value
+    return output_data
+
+def format_result(data):
+    output_data = {}
+    for key, value in data.items():
+        keys = key.split(".")
+        d = output_data
+        for k in keys[:-1]:
+            if k not in d:
+                d[k] = {}
+            d = d[k]
+        d[keys[-1]] = value
+    return output_data
 
 import json
 class DataFormatter:
-    def __init__(self):
-        data = {}
-        for key in self.__dir__():
-            if isinstance(self.__getattribute__(key), str) and "__" not in key:
-                data[key] = self.__getattribute__(key)
-        self.schema = data
+    def __init__(self, *args, **kwargs):
+        self.schema = {k:v for k,v in self.__class__.__dict__.items() if not k.startswith("__")}
 
-    def format(self, data):
-        data = format_dict(data.to_mongo())
-        result = {}
-        for k in self.schema:
-            result[k] = str(data.get(self.schema[k])) if isinstance(data.get(self.schema[k]), ObjectId) else data.get(self.schema[k])
-        return result
+    def format(self, data, many=False, ref=[]):
+        schema = flatten_dict(self.schema, schema=True)
+        if many:
+            result = []
+            for d in list(data):
+                ref_data = {}
+                for rf in ref:
+                    ref_data[rf] = json.loads(getattr(d, rf).to_json())
+                try:
+                    d = d.to_mongo() | ref_data
+                except:
+                    d = d | ref_data
+                d = flatten_dict(d)
+                new_data = {}
+                for k in schema:
+                    new_data[k] = str(d.get(schema[k])) if isinstance(d.get(schema[k]), ObjectId) else d.get(schema[k])
+                result.append(format_result(new_data))
+            return result
+        else:
+            ref_data = {}
+            for rf in ref:
+                ref_data[rf] = json.loads(getattr(data, rf).to_json())
+            try:
+                data = data.to_mongo() | ref_data
+            except:
+                data = data | ref_data
+            data = flatten_dict(data)
+            new_data = {}
+            for k in schema:
+                new_data[k] = str(data.get(schema[k])) if isinstance(data.get(schema[k]), ObjectId) else data.get(schema[k])
+            return format_result(new_data)
